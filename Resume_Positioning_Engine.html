@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Positioning Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070b14;--surface:#0d1424;--card:#111d30;--card2:#162236;
+  --border:#1e3050;--border2:#253d61;
+  --amber:#f59e0b;--amber-h:#fbbf24;--amber-d:rgba(245,158,11,.12);--amber-d2:rgba(245,158,11,.06);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.12);
+  --green:#10b981;--green-d:rgba(16,185,129,.12);
+  --red:#ef4444;--red-d:rgba(239,68,68,.12);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,.12);
+  --text:#e2e8f0;--text-m:#94a3b8;--text-d:#4b6280;
+  --mono:'JetBrains Mono',monospace;--sans:'Outfit',sans-serif;
+  --r:8px;--rl:12px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+.logo-icon{width:30px;height:30px;background:var(--amber);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo-sub{color:var(--text-d);font-weight:400;font-size:12px;margin-left:2px}
+.api-row{display:flex;align-items:center;gap:8px}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--text-d);flex-shrink:0;transition:background .3s}
+.api-dot.ok{background:var(--green)}
+.api-dot.bad{background:var(--red)}
+.api-in{background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:var(--r);font-family:var(--mono);font-size:12px;width:290px;outline:none;transition:border-color .2s}
+.api-in:focus{border-color:var(--amber)}
+.api-in::placeholder{color:var(--text-d)}
+
+/* STEPS NAV */
+.steps-nav{display:flex;align-items:center;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);height:52px;gap:0}
+.step-item{display:flex;align-items:center;gap:8px;padding:0 16px;height:100%;font-size:12px;font-weight:500;color:var(--text-d);border-bottom:2px solid transparent;cursor:default;white-space:nowrap}
+.step-item.active{color:var(--amber);border-bottom-color:var(--amber)}
+.step-item.done{color:var(--green)}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-family:var(--mono);flex-shrink:0}
+.step-item.active .step-num{background:var(--amber);color:#000}
+.step-item.done .step-num{background:var(--green);color:#000}
+.step-arrow{color:var(--border2);font-size:12px;flex-shrink:0}
+
+/* LAYOUT */
+.main{padding:22px 24px;max-width:1100px;margin:0 auto}
+.panel{display:none}
+.panel.on{display:block;animation:fi .25s ease}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:800px){.g2{grid-template-columns:1fr}}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:20px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.ct{font-size:11px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.09em}
+
+/* FORM */
+.lbl{display:block;font-size:11px;font-weight:500;color:var(--text-m);margin-bottom:5px;letter-spacing:.04em}
+.fg{margin-bottom:14px}
+input[type=text],textarea,select{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:var(--r);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s;resize:vertical}
+input[type=text]:focus,textarea:focus,select:focus{border-color:var(--amber)}
+input::placeholder,textarea::placeholder{color:var(--text-d)}
+select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%234b6280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select option{background:var(--card)}
+.g2f{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.g2f{grid-template-columns:1fr}}
+.g3f{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:700px){.g3f{grid-template-columns:1fr}}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--amber);color:#000}
+.btn-p:hover:not(:disabled){background:var(--amber-h)}
+.btn-o{background:transparent;color:var(--text);border:1px solid var(--border2)}
+.btn-o:hover:not(:disabled){background:var(--card2);border-color:var(--amber);color:var(--amber)}
+.btn-g{background:transparent;color:var(--text-m);border:none;padding:6px 10px}
+.btn-g:hover:not(:disabled){color:var(--text);background:var(--card)}
+.btn-s{padding:6px 12px;font-size:12px}
+.btn-grn{background:var(--green-d);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
+.btn-grn:hover:not(:disabled){background:rgba(16,185,129,.2)}
+.btn-blu{background:var(--blue-d);color:#93c5fd;border:1px solid rgba(59,130,246,.2)}
+.btn-blu:hover:not(:disabled){background:rgba(59,130,246,.2)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
+
+/* ALERTS */
+.alert{padding:9px 13px;border-radius:var(--r);font-size:12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;animation:fi .3s ease}
+.ai{background:var(--blue-d);border:1px solid rgba(59,130,246,.2);color:#93c5fd}
+.as{background:var(--green-d);border:1px solid rgba(16,185,129,.2);color:#6ee7b7}
+.ae{background:var(--red-d);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+.aw{background:var(--amber-d);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
+
+/* SPINNER */
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* CHIPS */
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono);cursor:pointer;transition:all .15s}
+.c-grn{background:var(--green-d);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
+.c-blu{background:var(--blue-d);color:#93c5fd;border:1px solid rgba(59,130,246,.2)}
+.c-amb{background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.c-pur{background:var(--purple-d);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+.chip.removed{opacity:.35;text-decoration:line-through}
+
+/* SECTION HEADING */
+.sh{font-size:10px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px}
+
+/* THEME CARD */
+.theme-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+.theme-card .theme-label{font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.theme-card p{font-size:12px;color:var(--text-m);line-height:1.6}
+
+/* OUTPUT SECTION */
+.out-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.out-label{font-size:10px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.out-content{font-size:13px;color:var(--text);line-height:1.75;white-space:pre-wrap}
+
+/* PROGRESS BAR */
+.prog-wrap{height:3px;background:var(--border);border-radius:2px;margin-bottom:20px}
+.prog-bar{height:100%;background:var(--amber);border-radius:2px;transition:width .4s ease}
+
+/* TONE SELECTOR */
+.tone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.tone-opt{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:all .15s;text-align:center}
+.tone-opt:hover{border-color:var(--border2)}
+.tone-opt.sel{border-color:var(--amber);background:var(--amber-d)}
+.tone-opt .tone-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.tone-opt .tone-desc{font-size:10px;color:var(--text-d)}
+
+/* SECTION DIVIDER */
+.sdiv{height:1px;background:var(--border);margin:20px 0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    Resume Positioning Engine
+    <span class="logo-sub">/ AI-Powered Career Positioning</span>
+  </div>
+  <div class="api-row">
+    <div class="api-dot" id="apiDot"></div>
+    <input type="password" class="api-in" id="apiIn" placeholder="Paste Anthropic API key — sk-ant-api03-..." autocomplete="off">
+  </div>
+</div>
+
+<div class="steps-nav">
+  <div class="step-item active" id="sn-1"><span class="step-num">1</span>Target Role</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-2"><span class="step-num">2</span>Career Intake</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-3"><span class="step-num">3</span>AI Analysis</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-4"><span class="step-num">4</span>Review & Refine</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-5"><span class="step-num">5</span>Generate Resume</div>
+</div>
+
+<div class="main">
+  <div id="ga"></div>
+  <div class="prog-wrap"><div class="prog-bar" id="progBar" style="width:20%"></div></div>
+
+  <!-- ═══ STEP 1: TARGET ROLE ═══ -->
+  <div class="panel on" id="panel-1">
+    <div class="card">
+      <div class="ch"><span class="ct">Step 1 — Target Role & Goals</span></div>
+      <p style="font-size:13px;color:var(--text-m);margin-bottom:20px;">Tell us where you're headed. The more specific you are, the better the positioning engine can tailor your resume.</p>
+
+      <div class="g2f">
+        <div class="fg">
+          <label class="lbl">Target Job Title *</label>
+          <input type="text" id="targetTitle" placeholder="e.g. Senior Technical Program Manager">
+        </div>
+        <div class="fg">
+          <label class="lbl">Target Industry *</label>
+          <select id="targetIndustry">
+            <option value="">Select industry...</option>
+            <option>FinTech / Financial Services</option>
+            <option>Enterprise Technology</option>
+            <option>Healthcare / HealthTech</option>
+            <option>AI / Machine Learning</option>
+            <option>Energy / Utilities</option>
+            <option>Higher Education / EdTech</option>
+            <option>Government / Defense</option>
+            <option>Consulting</option>
+            <option>E-Commerce / Retail Tech</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="g2f">
+        <div class="fg">
+          <label class="lbl">Seniority Level *</label>
+          <select id="targetLevel">
+            <option value="">Select level...</option>
+            <option>Individual Contributor</option>
+            <option>Senior Individual Contributor</option>
+            <option>Lead / Staff</option>
+            <option>Manager</option>
+            <option>Senior Manager / Director</option>
+            <option>VP / Executive</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="lbl">Work Preference</label>
+          <select id="targetWork">
+            <option value="">Select preference...</option>
+            <option>On-site</option>
+            <option>Hybrid</option>
+            <option>Remote</option>
+            <option>No preference</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Target Companies or Types (optional)</label>
+        <input type="text" id="targetCompanies" placeholder="e.g. Stripe, Plaid, fintech startups, large financial institutions...">
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Specific Job Description (optional — paste to boost keyword accuracy)</label>
+        <textarea id="targetJD" rows="5" placeholder="Paste a job description here to give Claude specific keywords and requirements to target. Leave blank to use AI inference only."></textarea>
+      </div>
+
+      <div class="sdiv"></div>
+
+      <p style="font-size:11px;color:var(--text-d);margin-bottom:14px;">* Required fields</p>
+
+      <div class="btn-row" style="margin-top:0">
+        <button class="btn btn-p" onclick="goStep(2)">
+          Continue to Career Intake →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 2: CAREER INTAKE ═══ -->
+  <div class="panel" id="panel-2">
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">Step 2 — Career Background</span></div>
+
+      <div class="g2f">
+        <div class="fg">
+          <label class="lbl">Full Name *</label>
+          <input type="text" id="intakeName" placeholder="Jonathan P. Madden">
+        </div>
+        <div class="fg">
+          <label class="lbl">Location</label>
+          <input type="text" id="intakeLocation" placeholder="Houston, TX">
+        </div>
+      </div>
+
+      <div class="g2f">
+        <div class="fg">
+          <label class="lbl">Email</label>
+          <input type="text" id="intakeEmail" placeholder="you@email.com">
+        </div>
+        <div class="fg">
+          <label class="lbl">LinkedIn URL</label>
+          <input type="text" id="intakeLinkedin" placeholder="linkedin.com/in/yourname">
+        </div>
+      </div>
+
+      <div class="g2f">
+        <div class="fg">
+          <label class="lbl">Years of Experience *</label>
+          <select id="intakeYears">
+            <option value="">Select...</option>
+            <option>1-3 years</option>
+            <option>4-7 years</option>
+            <option>8-12 years</option>
+            <option>13-17 years</option>
+            <option>18+ years</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="lbl">Current / Most Recent Title *</label>
+          <input type="text" id="intakeCurrentTitle" placeholder="e.g. Senior Technical Program Manager">
+        </div>
+      </div>
+    </div>
+
+    <!-- EXPERIENCE ENTRIES -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch">
+        <span class="ct">Work Experience</span>
+        <button class="btn btn-o btn-s" onclick="addExpEntry()">+ Add Role</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-m);margin-bottom:14px;">Add your most relevant roles. Focus on what you owned, improved, and delivered — not just your job description.</p>
+      <div id="expEntries"></div>
+    </div>
+
+    <!-- SKILLS & DOMAIN -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">Skills, Tools & Domain</span></div>
+
+      <div class="fg">
+        <label class="lbl">Technical Tools & Platforms</label>
+        <input type="text" id="intakeTools" placeholder="e.g. Jira, Confluence, ServiceNow, Salesforce, Azure, AWS, SQL, Python...">
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Methodologies</label>
+        <input type="text" id="intakeMethods" placeholder="e.g. Agile, Scrum, Waterfall, SAFe, Kanban, PRINCE2, PMP...">
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Compliance / Regulatory Exposure</label>
+        <input type="text" id="intakeCompliance" placeholder="e.g. PCI-DSS, HIPAA, SOX, GDPR, FedRAMP, ISO 27001...">
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Certifications</label>
+        <input type="text" id="intakeCerts" placeholder="e.g. PMP, CISSP, AWS Solutions Architect, Scrum Master...">
+      </div>
+
+      <div class="fg">
+        <label class="lbl">Biggest Career Strengths (in your own words)</label>
+        <textarea id="intakeStrengths" rows="3" placeholder="e.g. I'm known for walking into broken programs and making them ship. I understand both the technical and the compliance side..."></textarea>
+      </div>
+    </div>
+
+    <!-- TONE -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="ch"><span class="ct">Output Tone</span></div>
+      <p style="font-size:12px;color:var(--text-m);margin-bottom:12px;">How should your resume read? Same content, different voice.</p>
+      <div class="tone-grid">
+        <div class="tone-opt sel" onclick="selectTone(this,'executive')" data-tone="executive">
+          <div class="tone-name">Executive</div>
+          <div class="tone-desc">Strategic, authoritative, outcome-led</div>
+        </div>
+        <div class="tone-opt" onclick="selectTone(this,'technical')" data-tone="technical">
+          <div class="tone-name">Technical</div>
+          <div class="tone-desc">Precise, systems-focused, depth-forward</div>
+        </div>
+        <div class="tone-opt" onclick="selectTone(this,'balanced')" data-tone="balanced">
+          <div class="tone-name">Balanced</div>
+          <div class="tone-desc">Blends leadership and technical depth</div>
+        </div>
+        <div class="tone-opt" onclick="selectTone(this,'ats')" data-tone="ats">
+          <div class="tone-name">ATS-Safe</div>
+          <div class="tone-desc">Keyword-dense, clean, scannable</div>
+        </div>
+        <div class="tone-opt" onclick="selectTone(this,'modern')" data-tone="modern">
+          <div class="tone-name">Modern</div>
+          <div class="tone-desc">Direct, confident, contemporary</div>
+        </div>
+        <div class="tone-opt" onclick="selectTone(this,'consulting')" data-tone="consulting">
+          <div class="tone-name">Consulting</div>
+          <div class="tone-desc">Client-facing, engagement-driven</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-o" onclick="goStep(1)">← Back</button>
+      <button class="btn btn-p" onclick="runAnalysis()">
+        <span id="analysisSpin" style="display:none"><span class="spin"></span></span>
+        Analyze & Generate Keywords →
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 3: AI ANALYSIS ═══ -->
+  <div class="panel" id="panel-3">
+    <div id="analysisWrap">
+      <div style="text-align:center;padding:60px 20px;">
+        <span class="spin" style="width:28px;height:28px;border-width:3px;"></span>
+        <div style="margin-top:16px;color:var(--text-m);font-size:13px;" id="analysisStatus">Analyzing your background...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 4: REVIEW & REFINE ═══ -->
+  <div class="panel" id="panel-4">
+    <div class="g2">
+
+      <!-- LEFT: Keywords -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ch">
+            <span class="ct">AI-Inferred Keywords</span>
+            <span style="font-size:11px;color:var(--text-m);">Click to remove</span>
+          </div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px;">Claude inferred these keywords based on your target role and industry. Click any to remove before generating.</p>
+          <div class="sh">Core Role Keywords</div>
+          <div class="chips" id="kwCore"></div>
+          <div class="sh" style="margin-top:12px">Technical & Tools</div>
+          <div class="chips" id="kwTech"></div>
+          <div class="sh" style="margin-top:12px">Domain & Compliance</div>
+          <div class="chips" id="kwDomain"></div>
+          <div class="sh" style="margin-top:12px">Leadership & Soft Skills</div>
+          <div class="chips" id="kwLeader"></div>
+        </div>
+
+        <!-- Bullet Rewriter -->
+        <div class="card">
+          <div class="ch"><span class="ct">Bullet Rewriter</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px;">Paste a weak bullet — get a stronger version back.</p>
+          <div class="fg">
+            <textarea id="rewriteIn" rows="3" placeholder="e.g. Helped with software installs and worked with teams..."></textarea>
+          </div>
+          <button class="btn btn-o btn-s" onclick="rewriteBullet()" id="rewriteBtn">
+            <span id="rewriteSpin" style="display:none"><span class="spin"></span></span>
+            Rewrite →
+          </button>
+          <div id="rewriteOut" style="display:none;margin-top:12px;background:var(--amber-d2);border:1px solid rgba(245,158,11,.1);border-radius:var(--r);padding:12px;font-size:12px;color:var(--text);line-height:1.75;"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Positioning Themes & Gaps -->
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ch"><span class="ct">Positioning Themes</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:12px;">How Claude classified your experience for this target role.</p>
+          <div id="themesWrap"></div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">Gap Analysis</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px;">What's missing or underrepresented for this target role.</p>
+          <div id="gapsWrap"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-o" onclick="goStep(2)">← Back</button>
+      <button class="btn btn-p" onclick="generateResume()">
+        <span id="genSpin" style="display:none"><span class="spin"></span></span>
+        Generate Resume →
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ STEP 5: OUTPUT ═══ -->
+  <div class="panel" id="panel-5">
+    <div id="ga5"></div>
+    <div class="g2">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ch">
+            <span class="ct">Generated Resume</span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-grn btn-s" onclick="dlResume()" id="dlBtn">Download .doc</button>
+            </div>
+          </div>
+          <div id="resumePreview" style="font-size:12px;color:var(--text-m);line-height:1.8;"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="ch"><span class="ct">Positioning Summary</span></div>
+          <div id="positioningSummary"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Keyword Coverage</span></div>
+          <div id="keywordCoverage"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-o" onclick="goStep(4)">← Refine Keywords</button>
+      <button class="btn btn-o" onclick="startOver()">Start Over</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let KEY = '';
+let currentStep = 1;
+let selectedTone = 'executive';
+let analysisData = null;
+let generatedHtml = '';
+let expCount = 0;
+
+// ══════════════════════════════════════════════
+//  API KEY
+// ══════════════════════════════════════════════
+document.getElementById('apiIn').addEventListener('input', function(){
+  KEY = this.value.trim();
+  const d = document.getElementById('apiDot');
+  d.className = 'api-dot' + (KEY.startsWith('sk-ant') ? ' ok' : KEY.length > 5 ? ' bad' : '');
+});
+
+// ══════════════════════════════════════════════
+//  ALERTS
+// ══════════════════════════════════════════════
+function flash(msg, type='ai', cid='ga'){
+  const c = document.getElementById(cid);
+  if(!c) return;
+  const cls = {ai:'ai',as:'as',ae:'ae',aw:'aw'}[type]||'ai';
+  c.innerHTML = `<div class="alert ${cls}"><span>${{ai:'ℹ',as:'✓',ae:'✕',aw:'⚠'}[type]||'ℹ'}</span>${msg}</div>`;
+  setTimeout(() => { if(c.innerHTML) c.innerHTML=''; }, 6000);
+}
+function requireKey(){
+  if(!KEY){ flash('Paste your Anthropic API key in the header first.','ae'); return false; }
+  return true;
+}
+
+// ══════════════════════════════════════════════
+//  ANTHROPIC API WRAPPER
+// ══════════════════════════════════════════════
+async function claude(prompt, system='', maxTokens=4096){
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    messages: [{ role: 'user', content: prompt }]
+  };
+  if(system) body.system = system;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){
+    let m = `API error ${r.status}`;
+    try { const e = await r.json(); m = e.error?.message || m; } catch{}
+    throw new Error(m);
+  }
+  const d = await r.json();
+  return d.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+}
+
+// ══════════════════════════════════════════════
+//  STEP NAVIGATION
+// ══════════════════════════════════════════════
+function goStep(n){
+  if(n === 2){
+    const t = document.getElementById('targetTitle').value.trim();
+    const ind = document.getElementById('targetIndustry').value;
+    const lvl = document.getElementById('targetLevel').value;
+    if(!t || !ind || !lvl){ flash('Please fill in Target Title, Industry, and Level.','aw'); return; }
+    if(expCount === 0) addExpEntry();
+  }
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.getElementById('panel-' + n).classList.add('on');
+  currentStep = n;
+  updateStepNav(n);
+  const pct = {1:20,2:40,3:60,4:80,5:100}[n] || 20;
+  document.getElementById('progBar').style.width = pct + '%';
+  window.scrollTo(0,0);
+}
+
+function updateStepNav(active){
+  for(let i=1;i<=5;i++){
+    const el = document.getElementById('sn-'+i);
+    el.className = 'step-item' + (i===active?' active':i<active?' done':'');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  EXPERIENCE ENTRIES
+// ══════════════════════════════════════════════
+function addExpEntry(){
+  expCount++;
+  const id = expCount;
+  const wrap = document.getElementById('expEntries');
+  const div = document.createElement('div');
+  div.id = 'exp-'+id;
+  div.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;">Role ${id}</span>
+      ${id>1?`<button onclick="removeExp(${id})" style="background:none;border:none;color:var(--text-d);cursor:pointer;font-size:13px;" title="Remove">✕</button>`:''}
+    </div>
+    <div class="g2f" style="margin-bottom:10px;">
+      <div class="fg" style="margin-bottom:0"><label class="lbl">Job Title *</label><input type="text" id="exp-title-${id}" placeholder="Senior Technical Program Manager"></div>
+      <div class="fg" style="margin-bottom:0"><label class="lbl">Company *</label><input type="text" id="exp-company-${id}" placeholder="Company Name"></div>
+    </div>
+    <div class="g3f" style="margin-bottom:10px;">
+      <div class="fg" style="margin-bottom:0"><label class="lbl">Start Date</label><input type="text" id="exp-start-${id}" placeholder="Jan 2020"></div>
+      <div class="fg" style="margin-bottom:0"><label class="lbl">End Date</label><input type="text" id="exp-end-${id}" placeholder="Present"></div>
+      <div class="fg" style="margin-bottom:0"><label class="lbl">Team Size</label><input type="text" id="exp-team-${id}" placeholder="e.g. 12 direct reports"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px;">
+      <label class="lbl">What did you own and deliver? (be specific)</label>
+      <textarea id="exp-duties-${id}" rows="3" placeholder="e.g. Led end-to-end delivery of 3 concurrent SaaS platform integrations, owned vendor relationships, managed $2M program budget..."></textarea>
+    </div>
+    <div class="fg" style="margin-bottom:10px;">
+      <label class="lbl">Biggest wins, outcomes, or metrics</label>
+      <textarea id="exp-wins-${id}" rows="2" placeholder="e.g. Delivered on time with 4% budget surplus. Reduced audit findings by 40%. Increased on-time delivery from 72% to 95%..."></textarea>
+    </div>
+    <div class="fg" style="margin-bottom:0;">
+      <label class="lbl">Environment / Context</label>
+      <input type="text" id="exp-env-${id}" placeholder="e.g. Regulated fintech, remote team, legacy system modernization, post-merger integration...">
+    </div>`;
+  wrap.appendChild(div);
+}
+
+function removeExp(id){
+  const el = document.getElementById('exp-'+id);
+  if(el) el.remove();
+}
+
+function collectExperience(){
+  const entries = [];
+  for(let i=1;i<=expCount;i++){
+    const title = document.getElementById('exp-title-'+i);
+    const company = document.getElementById('exp-company-'+i);
+    if(!title || !company) continue;
+    if(!title.value.trim() && !company.value.trim()) continue;
+    entries.push({
+      title: title.value.trim(),
+      company: company.value.trim(),
+      start: document.getElementById('exp-start-'+i)?.value.trim()||'',
+      end: document.getElementById('exp-end-'+i)?.value.trim()||'',
+      team: document.getElementById('exp-team-'+i)?.value.trim()||'',
+      duties: document.getElementById('exp-duties-'+i)?.value.trim()||'',
+      wins: document.getElementById('exp-wins-'+i)?.value.trim()||'',
+      env: document.getElementById('exp-env-'+i)?.value.trim()||''
+    });
+  }
+  return entries;
+}
+
+// ══════════════════════════════════════════════
+//  TONE SELECTOR
+// ══════════════════════════════════════════════
+function selectTone(el, tone){
+  document.querySelectorAll('.tone-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  selectedTone = tone;
+}
+
+// ══════════════════════════════════════════════
+//  STEP 3: RUN ANALYSIS
+// ══════════════════════════════════════════════
+async function runAnalysis(){
+  if(!requireKey()) return;
+  const name = document.getElementById('intakeName').value.trim();
+  const currentTitle = document.getElementById('intakeCurrentTitle').value.trim();
+  const years = document.getElementById('intakeYears').value;
+  if(!name || !currentTitle || !years){
+    flash('Please fill in your name, current title, and years of experience.','aw');
+    return;
+  }
+  const exp = collectExperience();
+  if(exp.length === 0){
+    flash('Please add at least one work experience entry.','aw');
+    return;
+  }
+
+  goStep(3);
+  const statusEl = document.getElementById('analysisStatus');
+
+  const targetTitle = document.getElementById('targetTitle').value.trim();
+  const targetIndustry = document.getElementById('targetIndustry').value;
+  const targetLevel = document.getElementById('targetLevel').value;
+  const targetJD = document.getElementById('targetJD').value.trim();
+  const tools = document.getElementById('intakeTools').value.trim();
+  const methods = document.getElementById('intakeMethods').value.trim();
+  const compliance = document.getElementById('intakeCompliance').value.trim();
+  const certs = document.getElementById('intakeCerts').value.trim();
+  const strengths = document.getElementById('intakeStrengths').value.trim();
+
+  const expSummary = exp.map((e,i) =>
+    `Role ${i+1}: ${e.title} at ${e.company} (${e.start}–${e.end})
+     Team: ${e.team}
+     Duties: ${e.duties}
+     Wins: ${e.wins}
+     Environment: ${e.env}`
+  ).join('\n\n');
+
+  const prompt = `You are an expert career positioning strategist and resume architect. Analyze this candidate's background and generate a comprehensive positioning analysis.
+
+TARGET ROLE: ${targetTitle}
+TARGET INDUSTRY: ${targetIndustry}
+SENIORITY LEVEL: ${targetLevel}
+OUTPUT TONE: ${selectedTone}
+${targetJD ? `\nSPECIFIC JOB DESCRIPTION:\n${targetJD}` : '\nNo specific job description provided — use AI inference for keywords.'}
+
+CANDIDATE BACKGROUND:
+Name: ${name}
+Current Title: ${currentTitle}
+Years of Experience: ${years}
+Tools & Platforms: ${tools}
+Methodologies: ${methods}
+Compliance/Regulatory: ${compliance}
+Certifications: ${certs}
+Self-described Strengths: ${strengths}
+
+WORK EXPERIENCE:
+${expSummary}
+
+Return ONLY a valid JSON object with NO markdown, NO backticks, NO commentary:
+{
+  "keywords": {
+    "core": ["keyword1","keyword2",...],
+    "technical": ["keyword1","keyword2",...],
+    "domain": ["keyword1","keyword2",...],
+    "leadership": ["keyword1","keyword2",...]
+  },
+  "themes": [
+    {"label": "Theme Name", "description": "How this theme appears in their background and why it matters for the target role"},
+    ...
+  ],
+  "gaps": [
+    {"gap": "Gap description", "suggestion": "How to address or reframe"},
+    ...
+  ],
+  "positioning_summary": "2-3 sentence strategic summary of how to position this candidate for the target role",
+  "headline": "Suggested resume headline/title line"
+}
+
+Generate at least 8 keywords per category. Themes should be 3-5. Gaps should be 3-5 honest observations.`;
+
+  try {
+    statusEl.textContent = 'Inferring keywords for your target role...';
+    const raw = await claude(prompt, 'You are an expert career positioning strategist. Return raw JSON only.', 3000);
+    const s = raw.indexOf('{'), e = raw.lastIndexOf('}')+1;
+    analysisData = JSON.parse(raw.slice(s,e));
+    statusEl.textContent = 'Building positioning themes...';
+    await new Promise(r => setTimeout(r, 400));
+    renderAnalysis();
+    goStep(4);
+  } catch(err){
+    flash('Analysis failed: ' + err.message, 'ae');
+    goStep(2);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  RENDER ANALYSIS (STEP 4)
+// ══════════════════════════════════════════════
+function renderAnalysis(){
+  if(!analysisData) return;
+
+  // Keywords
+  const cats = {
+    kwCore: analysisData.keywords?.core || [],
+    kwTech: analysisData.keywords?.technical || [],
+    kwDomain: analysisData.keywords?.domain || [],
+    kwLeader: analysisData.keywords?.leadership || []
+  };
+  const colors = {kwCore:'c-amb', kwTech:'c-blu', kwDomain:'c-grn', kwLeader:'c-pur'};
+
+  Object.entries(cats).forEach(([id, kws]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.innerHTML = kws.map(k =>
+      `<span class="chip ${colors[id]}" onclick="toggleKw(this)" title="Click to remove">${k}</span>`
+    ).join('');
+  });
+
+  // Themes
+  const tw = document.getElementById('themesWrap');
+  tw.innerHTML = (analysisData.themes||[]).map(t =>
+    `<div class="theme-card"><div class="theme-label">${t.label}</div><p>${t.description}</p></div>`
+  ).join('');
+
+  // Gaps
+  const gw = document.getElementById('gapsWrap');
+  gw.innerHTML = (analysisData.gaps||[]).map(g =>
+    `<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);">
+      <div style="font-size:12px;color:var(--red);margin-bottom:4px;font-weight:500;">⚠ ${g.gap}</div>
+      <div style="font-size:11px;color:var(--text-m);">→ ${g.suggestion}</div>
+    </div>`
+  ).join('');
+}
+
+function toggleKw(el){
+  el.classList.toggle('removed');
+}
+
+function getActiveKeywords(){
+  const all = [];
+  document.querySelectorAll('.chip:not(.removed)').forEach(c => all.push(c.textContent));
+  return all;
+}
+
+// ══════════════════════════════════════════════
+//  BULLET REWRITER
+// ══════════════════════════════════════════════
+async function rewriteBullet(){
+  if(!requireKey()) return;
+  const text = document.getElementById('rewriteIn').value.trim();
+  if(!text){ flash('Paste a bullet point to rewrite.','aw'); return; }
+  const btn = document.getElementById('rewriteBtn');
+  const sp = document.getElementById('rewriteSpin');
+  btn.disabled=true; sp.style.display='inline-block';
+  try {
+    const targetTitle = document.getElementById('targetTitle').value.trim();
+    const targetIndustry = document.getElementById('targetIndustry').value;
+    const result = await claude(
+      `Rewrite this resume bullet point to be stronger, more impactful, and better aligned to a ${targetTitle} role in ${targetIndustry}.\n\nOriginal: "${text}"\n\nRules:\n- Start with a strong action verb\n- Be specific and outcome-oriented\n- Incorporate relevant keywords naturally\n- Keep it to 1-2 lines\n- Do not fabricate metrics — if no metrics exist, use qualitative impact language\n\nReturn ONLY the rewritten bullet. No preamble, no explanation.`,
+      '', 500
+    );
+    const out = document.getElementById('rewriteOut');
+    out.style.display='block';
+    out.textContent = result.trim();
+  } catch(err){
+    flash('Rewrite failed: ' + err.message, 'ae');
+  } finally {
+    btn.disabled=false; sp.style.display='none';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  STEP 5: GENERATE RESUME
+// ══════════════════════════════════════════════
+async function generateResume(){
+  if(!requireKey()) return;
+  const sp = document.getElementById('genSpin');
+  const btn = document.querySelector('#panel-4 .btn-p');
+  btn.disabled=true; sp.style.display='inline-block';
+
+  const name = document.getElementById('intakeName').value.trim();
+  const location = document.getElementById('intakeLocation').value.trim();
+  const email = document.getElementById('intakeEmail').value.trim();
+  const linkedin = document.getElementById('intakeLinkedin').value.trim();
+  const targetTitle = document.getElementById('targetTitle').value.trim();
+  const targetIndustry = document.getElementById('targetIndustry').value;
+  const targetLevel = document.getElementById('targetLevel').value;
+  const tools = document.getElementById('intakeTools').value.trim();
+  const methods = document.getElementById('intakeMethods').value.trim();
+  const compliance = document.getElementById('intakeCompliance').value.trim();
+  const certs = document.getElementById('intakeCerts').value.trim();
+  const exp = collectExperience();
+  const keywords = getActiveKeywords();
+
+  const expText = exp.map(e =>
+    `${e.title} | ${e.company} | ${e.start} – ${e.end}\nTeam: ${e.team}\nDuties: ${e.duties}\nWins: ${e.wins}\nEnvironment: ${e.env}`
+  ).join('\n\n');
+
+  try {
+    goStep(5);
+
+    const resumeHtml = await claude(
+      `Generate a complete, polished resume for this candidate. Return ONLY clean semantic HTML.
+
+CANDIDATE: ${name}
+CONTACT: ${location}${email?' | '+email:''}${linkedin?' | '+linkedin:''}
+TARGET ROLE: ${targetTitle} | ${targetIndustry} | ${targetLevel}
+TONE: ${selectedTone}
+HEADLINE FROM ANALYSIS: ${analysisData?.headline||targetTitle}
+POSITIONING SUMMARY: ${analysisData?.positioning_summary||''}
+
+KEYWORDS TO INCORPORATE NATURALLY:
+${keywords.join(', ')}
+
+TOOLS & METHODS: ${tools} | ${methods}
+COMPLIANCE: ${compliance}
+CERTIFICATIONS: ${certs}
+
+WORK EXPERIENCE:
+${expText}
+
+INSTRUCTIONS:
+- TARGET LENGTH: 1-2 pages maximum. Be concise. Tight bullets, no padding.
+- Write a powerful 2-paragraph professional summary — each paragraph max 3 sentences
+- Create a Core Competencies section with EXACTLY 4 categories formatted as: <p class="comp"><strong>Category Label:</strong> Item 1 • Item 2 • Item 3</p> — NOT bullet lists
+- Rewrite each experience role into 3-4 tight bullet points — max 20 words per bullet
+- Bullets must start with strong action verbs and include outcomes where data was provided
+- Incorporate keywords naturally — never stuffed
+- Tone must match: ${selectedTone}
+- CRITICAL: Do NOT fabricate or add ANY certifications, credentials, or qualifications not explicitly listed in the certifications field. If certifications field is empty, include NO certifications anywhere.
+- Do NOT fabricate metrics — use qualitative impact language if no metrics given
+- Keep the summary to 2 paragraphs only — do not add extra sections or padding
+
+HTML STRUCTURE (use exactly these elements, NO inline styles, NO markdown):
+<h1> for candidate name
+<p class="subtitle"> for headline/title only — NO certifications unless explicitly provided
+<p class="contact"> for contact line
+<h2> for section headers
+<p class="comp"> for each competency line — format: <strong>Label:</strong> item • item • item
+<h3> for job titles
+<p class="co-meta"> for company | dates
+<ul><li> for experience bullets — keep each bullet under 20 words
+<hr> between major sections`,
+      'You are an expert resume writer. Return ONLY clean semantic HTML — no markdown, no backticks, no commentary.',
+      4000
+    );
+
+    generatedHtml = resumeHtml;
+
+    // Render preview
+    const preview = document.getElementById('resumePreview');
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = resumeHtml;
+    preview.innerHTML = '';
+    Array.from(tempDiv.children).forEach(child => {
+      const clone = child.cloneNode(true);
+      clone.style.cssText = '';
+      preview.appendChild(clone);
+    });
+
+    // Positioning summary
+    document.getElementById('positioningSummary').innerHTML =
+      `<p style="font-size:13px;color:var(--text-m);line-height:1.75;">${analysisData?.positioning_summary||''}</p>`;
+
+    // Keyword coverage
+    const covWrap = document.getElementById('keywordCoverage');
+    const used = keywords.slice(0,20);
+    covWrap.innerHTML = `
+      <p style="font-size:12px;color:var(--text-m);margin-bottom:8px;">${used.length} keywords incorporated into your resume:</p>
+      <div class="chips">${used.map(k=>`<span class="chip c-grn">${k}</span>`).join('')}</div>`;
+
+    flash('Resume generated successfully!','as','ga5');
+  } catch(err){
+    flash('Generation failed: ' + err.message, 'ae', 'ga5');
+    goStep(4);
+  } finally {
+    btn.disabled=false; sp.style.display='none';
+  }
+}
+
+// ══════════════════════════════════════════════
+//  DOWNLOAD AS .DOC
+// ══════════════════════════════════════════════
+function dlResume(){
+  if(!generatedHtml){ flash('Generate a resume first.','aw','ga5'); return; }
+  const name = document.getElementById('intakeName').value.trim().replace(/\s+/g,'_');
+  const role = document.getElementById('targetTitle').value.trim().replace(/[^\w]/g,'_');
+  const styles = `
+    @page{margin:.9in .85in}
+    body{font-family:Calibri,'Segoe UI',Arial,sans-serif;font-size:10.5pt;line-height:1.45;color:#111}
+    h1{font-size:20pt;font-weight:700;color:#0b1628;margin-bottom:2pt}
+    .subtitle{font-size:11pt;color:#2d4a7a;font-weight:500;margin-bottom:3pt}
+    .contact{font-size:9.5pt;color:#555;margin-bottom:16pt}
+    h2{font-size:10.5pt;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5pt solid #c8940e;padding-bottom:2pt;margin-top:14pt;margin-bottom:6pt}
+    h3{font-size:10.5pt;font-weight:700;color:#111;margin-top:8pt;margin-bottom:1pt}
+    .co-meta{font-size:9.5pt;color:#555;margin-bottom:4pt;font-style:italic}
+    ul{margin-left:13pt;margin-top:2pt}li{margin-bottom:2.5pt;font-size:10pt}
+    hr{border:none;border-top:.5pt solid #ddd;margin:8pt 0}
+    .comp{font-size:10pt;margin-bottom:3pt;line-height:1.5}`;
+  const doc = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><style>${styles}</style></head>
+<body>${generatedHtml}</body></html>`;
+  const blob = new Blob([doc],{type:'application/msword'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`${name}_${role}.doc`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ══════════════════════════════════════════════
+//  START OVER
+// ══════════════════════════════════════════════
+function startOver(){
+  if(!confirm('Start over? All current data will be cleared.')) return;
+  location.reload();
+}
+
+// ══════════════════════════════════════════════
+//  INIT — add first exp entry
+// ══════════════════════════════════════════════
+addExpEntry();
+</script>
+</body>
+</html>
