@@ -1,0 +1,864 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Make Me! — Resume Positioning Engine</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070b14;--surface:#0d1424;--card:#111d30;--card2:#162236;
+  --border:#1e3050;--border2:#253d61;
+  --amber:#f59e0b;--amber-h:#fbbf24;
+  --amber-d:rgba(245,158,11,.12);--amber-d2:rgba(245,158,11,.06);
+  --blue:#3b82f6;--blue-d:rgba(59,130,246,.12);
+  --green:#10b981;--green-d:rgba(16,185,129,.12);
+  --red:#ef4444;--red-d:rgba(239,68,68,.12);
+  --purple:#a78bfa;--purple-d:rgba(167,139,250,.12);
+  --text:#e2e8f0;--text-m:#94a3b8;--text-d:#4b6280;
+  --mono:'Cascadia Mono','Consolas',monospace;--sans:'Segoe UI',Arial,sans-serif;
+  --r:8px;--rl:12px;
+}
+html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.6}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{position:relative;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;outline:none}
+.logo-icon{width:30px;height:30px;background:var(--amber);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.logo-sub{color:var(--text-d);font-weight:400;font-size:12px;margin-left:2px}
+.engine-menu{position:absolute;top:100%;left:0;width:250px;background:var(--card);border:1px solid var(--border2);border-radius:var(--r);box-shadow:0 18px 45px rgba(0,0,0,.35);padding:8px;opacity:0;visibility:hidden;pointer-events:none;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s;z-index:200}
+.logo:hover .engine-menu,.logo:focus-within .engine-menu{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}
+.engine-menu a{display:block;padding:8px 10px;border-radius:6px;color:var(--text-m);text-decoration:none;font-size:12px;line-height:1.3}
+.engine-menu a:hover,.engine-menu a:focus{background:var(--surface);color:var(--amber);outline:none}
+.engine-menu .current{color:var(--text);background:var(--amber-d)}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--text-d);transition:background .3s}
+.api-dot.ok{background:var(--green)}.api-dot.bad{background:var(--red)}
+.api-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.ai-sel,.model-in,.api-in{background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:var(--r);font-family:var(--sans);font-size:12px;outline:none;transition:border-color .2s;height:34px}
+.ai-sel{width:132px}.model-in{width:178px;font-family:var(--mono)}.api-in{width:238px;font-family:var(--mono)}
+.ai-sel:focus,.model-in:focus,.api-in:focus{border-color:var(--amber)}.api-in::placeholder,.model-in::placeholder{color:var(--text-d)}
+.steps-nav{display:flex;align-items:center;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);height:52px;overflow-x:auto}
+.step-item{display:flex;align-items:center;gap:8px;padding:0 14px;height:100%;font-size:12px;font-weight:500;color:var(--text-d);border-bottom:2px solid transparent;white-space:nowrap}
+.step-item.active{color:var(--amber);border-bottom-color:var(--amber)}.step-item.done{color:var(--green)}
+.step-num{width:20px;height:20px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;font-family:var(--mono)}
+.step-item.active .step-num{background:var(--amber);color:#000}.step-item.done .step-num{background:var(--green);color:#000}
+.step-arrow{color:var(--border2);font-size:12px}
+.main{padding:22px 24px;max-width:1100px;margin:0 auto}
+.panel{display:none}.panel.on{display:block;animation:fi .25s ease}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:800px){.g2{grid-template-columns:1fr}}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.g2f{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.g2f{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);padding:20px;margin-bottom:16px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.ct{font-size:11px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.09em}
+.lbl{display:block;font-size:11px;font-weight:500;color:var(--text-m);margin-bottom:5px}
+.fg{margin-bottom:14px}
+input,textarea,select{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 11px;border-radius:var(--r);font-family:var(--sans);font-size:13px;outline:none;transition:border-color .15s;resize:vertical}
+input:focus,textarea:focus,select:focus{border-color:var(--amber)}
+input::placeholder,textarea::placeholder{color:var(--text-d)}
+select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%234b6280' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+select option{background:var(--card)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--amber);color:#000}.btn-p:hover:not(:disabled){background:var(--amber-h)}
+.btn-o{background:transparent;color:var(--text);border:1px solid var(--border2)}.btn-o:hover:not(:disabled){background:var(--card2);border-color:var(--amber);color:var(--amber)}
+.btn-grn{background:var(--green-d);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}.btn-grn:hover:not(:disabled){background:rgba(16,185,129,.2)}
+.btn-s{padding:6px 12px;font-size:12px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.alert{padding:9px 13px;border-radius:var(--r);font-size:12px;margin-bottom:14px;display:flex;align-items:center;gap:8px;animation:fi .3s ease}
+.ai{background:var(--blue-d);border:1px solid rgba(59,130,246,.2);color:#93c5fd}
+.as{background:var(--green-d);border:1px solid rgba(16,185,129,.2);color:#6ee7b7}
+.ae{background:var(--red-d);border:1px solid rgba(239,68,68,.2);color:#fca5a5}
+.aw{background:var(--amber-d);border:1px solid rgba(245,158,11,.2);color:#fcd34d}
+.byo-note{background:var(--amber-d2);border:1px solid rgba(245,158,11,.2);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;color:var(--text-m);font-size:12px;line-height:1.7}
+.byo-note strong{color:var(--amber);font-size:13px}
+.safe-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 18px;margin-top:10px}
+.safe-list div{position:relative;padding-left:15px}
+.safe-list div::before{content:"";position:absolute;left:0;top:.72em;width:5px;height:5px;border-radius:50%;background:var(--amber)}
+@media(max-width:700px){.safe-list{grid-template-columns:1fr}.hdr{height:auto;min-height:58px;align-items:flex-start;padding:12px 16px;gap:12px}.hdr-right{flex-wrap:wrap;justify-content:flex-end}.ai-sel,.model-in,.api-in{width:220px}}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--amber);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.chip{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono);cursor:pointer;transition:all .15s}
+.c-grn{background:var(--green-d);color:#6ee7b7;border:1px solid rgba(16,185,129,.2)}
+.c-blu{background:var(--blue-d);color:#93c5fd;border:1px solid rgba(59,130,246,.2)}
+.c-amb{background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.c-pur{background:var(--purple-d);color:var(--purple);border:1px solid rgba(167,139,250,.2)}
+.chip.removed{opacity:.35;text-decoration:line-through}
+.sh{font-size:10px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;margin-top:12px}
+.sh:first-child{margin-top:0}
+.theme-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+.theme-label{font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.theme-card p{font-size:12px;color:var(--text-m);line-height:1.6}
+.prog-wrap{height:3px;background:var(--border);border-radius:2px;margin-bottom:20px}
+.prog-bar{height:100%;background:var(--amber);border-radius:2px;transition:width .4s ease}
+.sdiv{height:1px;background:var(--border);margin:20px 0}
+.tone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.tone-opt{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;cursor:pointer;transition:all .15s;text-align:center;user-select:none}
+.tone-opt:hover{border-color:var(--border2);background:var(--card2)}
+.tone-opt.sel{border-color:var(--amber);background:var(--amber-d)}
+.tone-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.tone-desc{font-size:10px;color:var(--text-d)}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setupModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:28px">
+    <div style="display:inline-flex;align-items:center;gap:6px;background:var(--amber-d);color:var(--amber);border:1px solid rgba(245,158,11,.2);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;margin-bottom:12px">⚡ One-Time Setup</div>
+    <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:var(--text)">Welcome to Make Me!</h2>
+    <p style="font-size:13px;color:var(--text-m);margin-bottom:18px">Enter your profile once — saved locally and shared across all Make Me! engines. Never asked again.</p>
+    <div id="setupAlert"></div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">Full Name *</label><input type="text" id="su-name" placeholder="Your Name"></div>
+      <div class="fg"><label class="lbl">Current Title *</label><input type="text" id="su-title" placeholder="Senior Operations Manager"></div>
+    </div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">Location</label><input type="text" id="su-location" placeholder="Houston, TX"></div>
+      <div class="fg"><label class="lbl">Email</label><input type="email" id="su-email" placeholder="you@email.com"></div>
+    </div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">LinkedIn</label><input type="text" id="su-linkedin" placeholder="linkedin.com/in/yourname"></div>
+      <div class="fg"><label class="lbl">GitHub (optional)</label><input type="text" id="su-github" placeholder="github.com/yourname"></div>
+    </div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">Years of Experience *</label>
+        <select id="su-years"><option value="">Select...</option><option>1-3 years</option><option>4-7 years</option><option>8-12 years</option><option>13-17 years</option><option>18+ years</option></select>
+      </div>
+      <div class="fg"><label class="lbl">Primary Domain *</label>
+        <select id="su-domain"><option value="">Select...</option><option>FinTech / Financial Services</option><option>Enterprise Technology</option><option>Healthcare / HealthTech</option><option>AI / Machine Learning</option><option>Energy / Utilities</option><option>Higher Education / EdTech</option><option>Government / Defense</option><option>Consulting</option><option>Other</option></select>
+      </div>
+    </div>
+    <div class="fg"><label class="lbl">Education *</label><input type="text" id="su-education" placeholder="e.g. Bachelor of Arts - Field | University Name | 2020"></div>
+    <div class="fg"><label class="lbl">Work Experience Summary *</label>
+      <textarea id="su-experience" rows="7" placeholder="Paste your work history - titles, companies, dates, responsibilities, wins. Plain text is fine."></textarea>
+    </div>
+    <div class="fg"><label class="lbl">Technical Tools and Platforms</label><input type="text" id="su-tools" placeholder="Jira, Confluence, ServiceNow, Azure, AWS..."></div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">Methodologies</label><input type="text" id="su-methods" placeholder="Agile, Scrum, Waterfall, SAFe..."></div>
+      <div class="fg"><label class="lbl">Compliance / Regulatory</label><input type="text" id="su-compliance" placeholder="PCI-DSS, HIPAA, SOX, GDPR..."></div>
+    </div>
+    <div class="g2f">
+      <div class="fg"><label class="lbl">Certifications</label><input type="text" id="su-certs" placeholder="PMP, CISSP, AWS... (leave blank if none)"></div>
+      <div class="fg"><label class="lbl">Biggest Strengths</label><input type="text" id="su-strengths" placeholder="e.g. Stabilizing broken programs..."></div>
+    </div>
+    <button class="btn btn-p" id="saveProfileBtn" style="width:100%;margin-top:8px">Save Profile and Start →</button>
+    <p style="font-size:11px;color:var(--text-d);margin-top:10px;text-align:center">Stored locally in your browser only. Nothing sent to any server except calls to your selected AI provider.</p>
+  </div>
+</div>
+
+<div class="hdr">
+  <div class="logo" tabindex="0" aria-label="Make Me engine navigation">
+    <div class="logo-icon">🎯</div>
+    Make Me!
+    <span class="logo-sub">/ Resume Positioning Engine</span>
+    <nav class="engine-menu" aria-label="Career Suite engines">
+      <a href="../index.html">Career Suite Launcher</a>
+      <a href="resume-positioning.html" class="current">Resume Positioning Engine</a>
+      <a href="job-application.html">Job Application Engine</a>
+      <a href="linkedin-profile.html">LinkedIn Profile Engine</a>
+      <a href="template-engine.html">Template Engine</a>
+    </nav>
+  </div>
+  <div class="hdr-right">
+    <button id="settingsBtn" title="Edit Profile" style="background:transparent;border:1px solid var(--border);color:var(--text-m);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px">⚙</button>
+    <button id="clearBtn" title="Clear All Data" style="background:transparent;border:1px solid var(--border);color:var(--text-m);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px">🗑</button>
+    <div class="api-row">
+      <div class="api-dot" id="apiDot"></div>
+      <select class="ai-sel" id="providerSel" title="Choose your AI provider">
+        <option value="openrouter">OpenRouter</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="gemini">Gemini</option>
+        <option value="custom">Custom</option>
+      </select>
+      <input type="text" class="model-in" id="modelIn" placeholder="Model" autocomplete="off" title="Model name for the selected provider">
+      <input type="password" class="api-in" id="apiIn" placeholder="Provider API key — not saved" autocomplete="off" title="Use a personal key with low spending limits. The key stays in page memory and is not saved by Make Me!.">
+    </div>
+  </div>
+</div>
+
+<div class="steps-nav">
+  <div class="step-item active" id="sn-1"><span class="step-num">1</span>Target Role</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-2"><span class="step-num">2</span>AI Analysis</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-3"><span class="step-num">3</span>Review &amp; Refine</div>
+  <span class="step-arrow">›</span>
+  <div class="step-item" id="sn-4"><span class="step-num">4</span>Generated Resume</div>
+</div>
+
+<div class="main">
+  <div id="ga"></div>
+  <div class="prog-wrap"><div class="prog-bar" id="progBar" style="width:25%"></div></div>
+  <div class="byo-note">
+    <strong>Browser prototype notice:</strong> Make Me! uses your own AI provider key directly from this page. The key is not saved in localStorage and is only used to send your prompts to the provider you choose while this tab is open.
+    <div class="safe-list">
+      <div>Use a personal key, not an employer or organization key.</div>
+      <div>Set low usage limits in your provider account.</div>
+      <div>Do not share screenshots or recordings with the key visible.</div>
+      <div>Generated resume HTML is sanitized before preview, save, and download.</div>
+      <div>This page avoids third-party scripts and remote fonts.</div>
+      <div>Refresh the page when you are done to clear the key from memory.</div>
+    </div>
+  </div>
+
+  <div class="panel on" id="panel-1">
+    <div class="card">
+      <div class="ch"><span class="ct">Step 1 — Target Role &amp; Goals</span></div>
+      <p style="font-size:13px;color:var(--text-m);margin-bottom:20px">Where are you headed? The more specific you are, the better the AI can position you.</p>
+      <div class="g2f">
+        <div class="fg"><label class="lbl">Target Job Title *</label><input type="text" id="targetTitle" placeholder="e.g. Senior Operations Manager"></div>
+        <div class="fg"><label class="lbl">Target Industry *</label>
+          <select id="targetIndustry">
+            <option value="">Select industry...</option>
+            <option>FinTech / Financial Services</option><option>Enterprise Technology</option>
+            <option>Healthcare / HealthTech</option><option>AI / Machine Learning</option>
+            <option>Energy / Utilities</option><option>Higher Education / EdTech</option>
+            <option>Government / Defense</option><option>Consulting</option>
+            <option>E-Commerce / Retail Tech</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="g2f">
+        <div class="fg"><label class="lbl">Seniority Level *</label>
+          <select id="targetLevel">
+            <option value="">Select level...</option>
+            <option>Individual Contributor</option><option>Senior Individual Contributor</option>
+            <option>Lead / Staff</option><option>Manager</option>
+            <option>Senior Manager / Director</option><option>VP / Executive</option>
+          </select>
+        </div>
+        <div class="fg"><label class="lbl">Work Preference</label>
+          <select id="targetWork">
+            <option value="">Select...</option>
+            <option>On-site</option><option>Hybrid</option><option>Remote</option><option>No preference</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label class="lbl">Target Companies or Types (optional)</label><input type="text" id="targetCompanies" placeholder="e.g. Stripe, Plaid, large financial institutions..."></div>
+      <div class="fg"><label class="lbl">Job Description (optional — paste to boost keyword accuracy)</label><textarea id="targetJD" rows="4" placeholder="Paste a full job description for precise keyword targeting. Leave blank for AI inference only."></textarea></div>
+      <div class="sdiv"></div>
+      <div style="font-size:11px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.09em;margin-bottom:12px">Output Tone</div>
+      <div class="tone-grid">
+        <div class="tone-opt sel" data-tone="executive"><div class="tone-name">Executive</div><div class="tone-desc">Strategic, authoritative</div></div>
+        <div class="tone-opt" data-tone="technical"><div class="tone-name">Technical</div><div class="tone-desc">Precise, depth-forward</div></div>
+        <div class="tone-opt" data-tone="balanced"><div class="tone-name">Balanced</div><div class="tone-desc">Leadership + technical</div></div>
+        <div class="tone-opt" data-tone="ats"><div class="tone-name">ATS-Safe</div><div class="tone-desc">Keyword-dense, scannable</div></div>
+        <div class="tone-opt" data-tone="modern"><div class="tone-name">Modern</div><div class="tone-desc">Direct, confident</div></div>
+        <div class="tone-opt" data-tone="consulting"><div class="tone-name">Consulting</div><div class="tone-desc">Client-facing</div></div>
+      </div>
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn btn-p" id="analyzeBtn">Analyze &amp; Generate Keywords →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-2">
+    <div style="text-align:center;padding:60px 20px">
+      <span class="spin" style="width:28px;height:28px;border-width:3px"></span>
+      <div style="margin-top:16px;color:var(--text-m);font-size:13px" id="aStatus">Analyzing your background...</div>
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;background:var(--amber-d2);border:1px solid rgba(245,158,11,.15);border-radius:20px;padding:4px 14px">
+        <span style="font-size:11px;color:var(--text-d)">&#9200; Building time:</span>
+        <span style="font-size:13px;font-weight:600;color:var(--amber);font-family:var(--mono)" id="timerDisplay">0s</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-3">
+    <div class="g2">
+      <div>
+        <div class="card">
+          <div class="ch"><span class="ct">AI-Inferred Keywords</span><span style="font-size:11px;color:var(--text-m)">Click to remove</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px">Inferred from your target role and industry. Remove any that do not fit.</p>
+          <div class="sh" style="margin-top:0">Core Role</div><div class="chips" id="kwCore"></div>
+          <div class="sh">Technical &amp; Tools</div><div class="chips" id="kwTech"></div>
+          <div class="sh">Domain &amp; Compliance</div><div class="chips" id="kwDomain"></div>
+          <div class="sh">Leadership</div><div class="chips" id="kwLeader"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Bullet Rewriter</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px">Paste a weak bullet and get a stronger version back.</p>
+          <div class="fg"><textarea id="rwIn" rows="3" placeholder="e.g. Helped with software installs and worked with teams..."></textarea></div>
+          <button class="btn btn-o btn-s" id="rwBtn">Rewrite →</button>
+          <div id="rwOut" style="display:none;margin-top:12px;background:var(--amber-d2);border:1px solid rgba(245,158,11,.1);border-radius:var(--r);padding:12px;font-size:12px;color:var(--text);line-height:1.75"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="ch"><span class="ct">Positioning Themes</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:12px">How the selected AI classified your experience for this role.</p>
+          <div id="themesWrap"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><span class="ct">Gap Analysis</span></div>
+          <p style="font-size:12px;color:var(--text-m);margin-bottom:10px">What is missing or underrepresented for this target role.</p>
+          <div id="gapsWrap"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-o" id="backBtn">← Back</button>
+      <button class="btn btn-p" id="generateBtn">Generate Resume →</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-4">
+    <div id="ga4"></div>
+    <div class="g2">
+      <div>
+        <div class="card">
+          <div class="ch"><span class="ct">Generated Resume</span><button class="btn btn-grn btn-s" id="dlBtn">Download .doc</button></div>
+          <div id="resumePreview" style="font-size:12px;color:var(--text-m);line-height:1.8"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card"><div class="ch"><span class="ct">Positioning Summary</span></div><div id="posSummary"></div></div>
+        <div class="card"><div class="ch"><span class="ct">Keyword Coverage</span></div><div id="kwCoverage"></div></div>
+        <div class="card"><div class="ch"><span class="ct">Saved Resumes</span></div><div id="savedList" style="font-size:12px;color:var(--text-d)">No saved resumes yet.</div></div>
+        <div class="card">
+          <div class="ch"><span class="ct">&#9200; Time Saved</span><span style="font-size:11px;color:var(--green);font-weight:500">vs. manual process</span></div>
+          <div id="timeSavedPanel"></div>
+        </div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-o" id="backToRefineBtn">← Refine</button>
+      <button class="btn btn-o" id="newTargetBtn">New Target Role</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var STORE_KEY = 'makeme_data';
+var STORE_DEFAULTS = {version:'1.0',profile:null,applications:[],resumes:[],timings:[],interviews:[],negotiations:[],linkedin:[],outreach:[]};
+
+function getStore(){try{var r=localStorage.getItem(STORE_KEY);return r?Object.assign({},STORE_DEFAULTS,JSON.parse(r)):Object.assign({},STORE_DEFAULTS);}catch(e){return Object.assign({},STORE_DEFAULTS);}}
+function saveStore(s){try{localStorage.setItem(STORE_KEY,JSON.stringify(s));return true;}catch(e){return false;}}
+function mmSaveProfile(p){var s=getStore();s.profile=Object.assign({},p,{updatedAt:new Date().toISOString()});return saveStore(s);}
+function mmSaveResume(r){var s=getStore();s.resumes=s.resumes||[];s.resumes.unshift(Object.assign({},r,{savedAt:new Date().toISOString()}));if(s.resumes.length>20)s.resumes=s.resumes.slice(0,20);return saveStore(s);}
+function mmSaveTiming(t){var s=getStore();s.timings=s.timings||[];s.timings.unshift(Object.assign({},t,{date:new Date().toISOString()}));if(s.timings.length>100)s.timings=s.timings.slice(0,100);return saveStore(s);}
+function mmGetResumes(){var resumes=getStore().resumes;return Array.isArray(resumes)?resumes:[];}
+function mmGetTimings(){var timings=getStore().timings;return Array.isArray(timings)?timings:[];}
+
+var PROFILE = null; // Loaded from shared makeme_data store on init
+
+var KEY = '';
+var selectedProvider = 'openrouter';
+var AI_MODELS = {
+  openrouter: 'openai/gpt-4.1-mini',
+  openai: 'gpt-4.1-mini',
+  anthropic: 'claude-sonnet-4-20250514',
+  gemini: 'gemini-1.5-flash',
+  custom: 'gpt-4.1-mini'
+};
+var selectedTone = 'executive';
+var analysisData = null;
+var generatedHtml = '';
+var MANUAL_MINUTES = 45;
+var timerStart = null;
+var timerInterval = null;
+var timerSeconds = 0;
+
+window.onload = function() {
+  // Load profile from shared makeme_data store
+  PROFILE = getStore().profile;
+  if (!PROFILE) {
+    showSetupModal();
+  }
+
+  // Settings button - opens setup modal pre-populated with current profile
+  document.getElementById('settingsBtn').addEventListener('click', function() {
+    populateSetupFromProfile();
+    showSetupModal();
+  });
+
+  // Clear all data button
+  document.getElementById('clearBtn').addEventListener('click', function() {
+    if (confirm('Clear all Make Me! data? This removes your profile, saved resumes, and timing history across ALL Make Me! engines. This cannot be undone.')) {
+      localStorage.removeItem(STORE_KEY);
+      location.reload();
+    }
+  });
+
+  // Save profile from modal
+  document.getElementById('saveProfileBtn').addEventListener('click', saveProfileFromModal);
+
+  document.getElementById('apiIn').addEventListener('input', function() {
+    KEY = this.value.trim();
+    updateApiDot();
+  });
+
+  document.getElementById('providerSel').addEventListener('change', function() {
+    selectedProvider = this.value;
+    document.getElementById('modelIn').value = AI_MODELS[selectedProvider] || '';
+    updateApiDot();
+  });
+
+  document.getElementById('modelIn').value = AI_MODELS[selectedProvider];
+  document.getElementById('modelIn').addEventListener('input', function() {
+    AI_MODELS[selectedProvider] = this.value.trim();
+    updateApiDot();
+  });
+
+  document.querySelectorAll('.tone-opt').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      document.querySelectorAll('.tone-opt').forEach(function(o) { o.classList.remove('sel'); });
+      opt.classList.add('sel');
+      selectedTone = opt.getAttribute('data-tone');
+    });
+  });
+
+  document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+  document.getElementById('backBtn').addEventListener('click', function() { goStep(1); });
+  document.getElementById('generateBtn').addEventListener('click', generateResume);
+  document.getElementById('backToRefineBtn').addEventListener('click', function() { goStep(3); });
+  document.getElementById('newTargetBtn').addEventListener('click', function() { goStep(1); });
+  document.getElementById('rwBtn').addEventListener('click', rewriteBullet);
+  document.getElementById('dlBtn').addEventListener('click', downloadResume);
+
+  renderSaved();
+};
+
+// SETUP MODAL HELPERS
+function showSetupModal() {
+  document.getElementById('setupModal').style.display = 'flex';
+}
+function hideSetupModal() {
+  document.getElementById('setupModal').style.display = 'none';
+}
+function populateSetupFromProfile() {
+  if (!PROFILE) return;
+  var fieldMap = {
+    name: 'name', title: 'currentTitle', location: 'location', email: 'email',
+    linkedin: 'linkedin', github: 'github', years: 'years', domain: 'domain',
+    education: 'education', experience: 'experience', tools: 'tools',
+    methods: 'methods', compliance: 'compliance', certs: 'certs', strengths: 'strengths'
+  };
+  Object.keys(fieldMap).forEach(function(suffix) {
+    var el = document.getElementById('su-' + suffix);
+    if (el) el.value = PROFILE[fieldMap[suffix]] || '';
+  });
+}
+function saveProfileFromModal() {
+  var name = document.getElementById('su-name').value.trim();
+  var title = document.getElementById('su-title').value.trim();
+  var years = document.getElementById('su-years').value;
+  var experience = document.getElementById('su-experience').value.trim();
+  var education = document.getElementById('su-education').value.trim();
+
+  var domain = document.getElementById('su-domain').value;
+
+  if (!name || !title || !years || !domain || !experience || !education) {
+    var al = document.getElementById('setupAlert');
+    al.innerHTML = '<div class="alert ae"><span>Please fill in Name, Title, Years of Experience, Primary Domain, Education, and Work Experience.</span></div>';
+    setTimeout(function() { al.innerHTML = ''; }, 4000);
+    return;
+  }
+
+  var newProfile = {
+    name: name,
+    currentTitle: title,
+    location: document.getElementById('su-location').value.trim(),
+    email: document.getElementById('su-email').value.trim(),
+    linkedin: document.getElementById('su-linkedin').value.trim(),
+    github: document.getElementById('su-github').value.trim(),
+    years: years,
+    domain: domain,
+    education: education,
+    experience: experience,
+    tools: document.getElementById('su-tools').value.trim(),
+    methods: document.getElementById('su-methods').value.trim(),
+    compliance: document.getElementById('su-compliance').value.trim(),
+    certs: document.getElementById('su-certs').value.trim() || 'None',
+    strengths: document.getElementById('su-strengths').value.trim()
+  };
+
+  mmSaveProfile(newProfile);
+  PROFILE = newProfile;
+  hideSetupModal();
+  flash('Profile saved! Shared across all Make Me! engines.', 'as');
+}
+
+function goStep(n) {
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('on'); });
+  document.getElementById('panel-' + n).classList.add('on');
+  for (var i = 1; i <= 4; i++) {
+    var el = document.getElementById('sn-' + i);
+    el.className = 'step-item' + (i === n ? ' active' : i < n ? ' done' : '');
+  }
+  var pcts = {1:'25%',2:'50%',3:'75%',4:'100%'};
+  document.getElementById('progBar').style.width = pcts[n] || '25%';
+  window.scrollTo(0, 0);
+}
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+function sanitizeResumeHtml(html) {
+  var allowed = {H1:1,H2:1,H3:1,P:1,STRONG:1,B:1,EM:1,I:1,UL:1,OL:1,LI:1,HR:1,BR:1};
+  var allowedClasses = {subtitle:1,contact:1,comp:1,'co-meta':1};
+  var template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  function clean(node) {
+    Array.from(node.childNodes).forEach(function(child) {
+      if (child.nodeType === 8) {
+        child.remove();
+        return;
+      }
+      if (child.nodeType !== 1) return;
+      if (!allowed[child.tagName]) {
+        child.replaceWith(document.createTextNode(child.textContent || ''));
+        return;
+      }
+      var originalClass = child.getAttribute('class') || '';
+      Array.from(child.attributes).forEach(function(attr) { child.removeAttribute(attr.name); });
+      if (child.tagName === 'P') {
+        var cls = String(originalClass).split(/\s+/).filter(function(c) { return allowedClasses[c]; }).join(' ');
+        if (cls) child.setAttribute('class', cls);
+      }
+      clean(child);
+    });
+  }
+  clean(template.content);
+  return template.innerHTML;
+}
+
+function flash(msg, type, cid) {
+  type = type || 'ai'; cid = cid || 'ga';
+  var c = document.getElementById(cid);
+  if (!c) return;
+  var icons = {ai:'i',as:'v',ae:'x',aw:'!'};
+  c.innerHTML = '<div class="alert ' + type + '"><span>' + (icons[type]||'i') + '</span>' + esc(msg) + '</div>';
+  setTimeout(function() { c.innerHTML = ''; }, 6000);
+}
+
+function updateApiDot() {
+  var d = document.getElementById('apiDot');
+  if (!d) return;
+  var ok = KEY.length > 8 && !!getAiModel();
+  d.className = 'api-dot' + (ok ? ' ok' : KEY.length ? ' bad' : '');
+}
+
+function getAiModel() {
+  return (document.getElementById('modelIn') && document.getElementById('modelIn').value.trim()) || AI_MODELS[selectedProvider] || '';
+}
+
+function needKey() {
+  if (!KEY) { flash('Paste your selected provider API key in the header first.', 'ae'); return false; }
+  if (!getAiModel()) { flash('Enter a model name for the selected AI provider.', 'ae'); return false; }
+  return true;
+}
+
+function callAI(prompt, system, maxTokens) {
+  if (selectedProvider === 'anthropic') return callAnthropic(prompt, system, maxTokens);
+  if (selectedProvider === 'gemini') return callGemini(prompt, system, maxTokens);
+  return callOpenAICompatible(prompt, system, maxTokens);
+}
+
+function apiError(r, data) {
+  var msg = data && data.error && (data.error.message || data.error.status || data.error.code);
+  return new Error((msg || 'API error') + ' (' + r.status + ')');
+}
+
+function callAnthropic(prompt, system, maxTokens) {
+  var body = {
+    model: getAiModel(),
+    max_tokens: maxTokens || 4096,
+    messages: [{role:'user',content:prompt}]
+  };
+  if (system) body.system = system;
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    if (!r.ok) return r.json().catch(function() { return {}; }).then(function(e) { throw apiError(r, e); });
+    return r.json();
+  }).then(function(d) {
+    return d.content.filter(function(b) { return b.type === 'text'; }).map(function(b) { return b.text; }).join('\n');
+  });
+}
+
+function callOpenAICompatible(prompt, system, maxTokens) {
+  var endpoint = selectedProvider === 'openrouter' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+  if (selectedProvider === 'custom') endpoint = window.prompt('Enter OpenAI-compatible chat completions endpoint:', 'https://api.openai.com/v1/chat/completions') || endpoint;
+  var messages = [];
+  if (system) messages.push({role:'system',content:system});
+  messages.push({role:'user',content:prompt});
+  return fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + KEY
+    },
+    body: JSON.stringify({
+      model: getAiModel(),
+      messages: messages,
+      max_tokens: maxTokens || 4096,
+      temperature: 0.2
+    })
+  }).then(function(r) {
+    if (!r.ok) return r.json().catch(function() { return {}; }).then(function(e) { throw apiError(r, e); });
+    return r.json();
+  }).then(function(d) {
+    return d.choices && d.choices[0] && d.choices[0].message ? d.choices[0].message.content || '' : '';
+  });
+}
+
+function callGemini(prompt, system, maxTokens) {
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(getAiModel()) + ':generateContent?key=' + encodeURIComponent(KEY);
+  var body = {
+    contents: [{role:'user',parts:[{text:prompt}]}],
+    generationConfig: {maxOutputTokens:maxTokens || 4096, temperature:0.2}
+  };
+  if (system) body.systemInstruction = {parts:[{text:system}]};
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    if (!r.ok) return r.json().catch(function() { return {}; }).then(function(e) { throw apiError(r, e); });
+    return r.json();
+  }).then(function(d) {
+    return (d.candidates || []).map(function(c) {
+      return c.content && c.content.parts ? c.content.parts.map(function(p) { return p.text || ''; }).join('\n') : '';
+    }).join('\n');
+  });
+}
+
+function startTimer() {
+  timerStart = Date.now(); timerSeconds = 0;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(function() {
+    timerSeconds = Math.floor((Date.now() - timerStart) / 1000);
+    var el = document.getElementById('timerDisplay');
+    if (el) el.textContent = fmtTime(timerSeconds);
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  if (timerStart) timerSeconds = Math.floor((Date.now() - timerStart) / 1000);
+}
+
+function fmtTime(s) {
+  if (s < 60) return s + 's';
+  var m = Math.floor(s / 60), sec = s % 60;
+  return sec > 0 ? m + 'm ' + sec + 's' : m + 'm';
+}
+
+function runAnalysis() {
+  if (!needKey()) return;
+  if (!PROFILE) { flash('Please complete your profile first.', 'aw'); showSetupModal(); return; }
+  var tt = document.getElementById('targetTitle').value.trim();
+  var ti = document.getElementById('targetIndustry').value;
+  var tl = document.getElementById('targetLevel').value;
+  if (!tt || !ti || !tl) { flash('Please fill in Target Title, Industry, and Level.', 'aw'); return; }
+  var jd = document.getElementById('targetJD').value.trim();
+  goStep(2);
+  startTimer();
+  var statusEl = document.getElementById('aStatus');
+  var prompt = 'You are an expert career positioning strategist.\n\n' +
+    'TARGET: ' + tt + ' | ' + ti + ' | ' + tl + ' | Tone: ' + selectedTone + '\n' +
+    (jd ? 'JOB DESCRIPTION:\n' + jd + '\n\n' : 'No JD provided - use AI inference.\n\n') +
+    'CANDIDATE: ' + PROFILE.name + ' | ' + PROFILE.currentTitle + ' | ' + PROFILE.years + ' | ' + PROFILE.domain + '\n' +
+    'Tools: ' + PROFILE.tools + '\nMethods: ' + PROFILE.methods + '\nCompliance: ' + PROFILE.compliance + '\n' +
+    'Certs: ' + PROFILE.certs + '\nStrengths: ' + PROFILE.strengths + '\n\nEXPERIENCE:\n' + PROFILE.experience + '\n\n' +
+    'Return ONLY valid JSON with no markdown and no backticks:\n' +
+    '{"keywords":{"core":[...],"technical":[...],"domain":[...],"leadership":[...]},' +
+    '"themes":[{"label":"...","description":"..."}],' +
+    '"gaps":[{"gap":"...","suggestion":"..."}],' +
+    '"positioning_summary":"...","headline":"..."}\n' +
+    'Minimum 8 keywords per category. 3-5 themes. 3-5 gaps.';
+  statusEl.textContent = 'Inferring keywords for your target role...';
+  callAI(prompt, 'Expert career positioning strategist. Return raw JSON only.', 3000)
+    .then(function(raw) {
+      var s = raw.indexOf('{'), e = raw.lastIndexOf('}') + 1;
+      analysisData = JSON.parse(raw.slice(s, e));
+      statusEl.textContent = 'Building positioning themes...';
+      return new Promise(function(res) { setTimeout(res, 400); });
+    })
+    .then(function() { renderAnalysis(); goStep(3); })
+    .catch(function(err) { stopTimer(); flash('Analysis failed: ' + err.message, 'ae'); goStep(1); });
+}
+
+function renderAnalysis() {
+  if (!analysisData) return;
+  var cats = {kwCore:(analysisData.keywords&&analysisData.keywords.core)||[],kwTech:(analysisData.keywords&&analysisData.keywords.technical)||[],kwDomain:(analysisData.keywords&&analysisData.keywords.domain)||[],kwLeader:(analysisData.keywords&&analysisData.keywords.leadership)||[]};
+  var colors = {kwCore:'c-amb',kwTech:'c-blu',kwDomain:'c-grn',kwLeader:'c-pur'};
+  Object.keys(cats).forEach(function(id) {
+      var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = cats[id].map(function(k) { return '<span class="chip ' + colors[id] + '" onclick="this.classList.toggle(\'removed\')">' + esc(k) + '</span>'; }).join('');
+  });
+  document.getElementById('themesWrap').innerHTML = (analysisData.themes||[]).map(function(t) { return '<div class="theme-card"><div class="theme-label">' + esc(t.label) + '</div><p>' + esc(t.description) + '</p></div>'; }).join('');
+  document.getElementById('gapsWrap').innerHTML = (analysisData.gaps||[]).map(function(g) { return '<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)"><div style="font-size:12px;color:var(--red);margin-bottom:4px;font-weight:500">! ' + esc(g.gap) + '</div><div style="font-size:11px;color:var(--text-m)">-&gt; ' + esc(g.suggestion) + '</div></div>'; }).join('');
+}
+
+function getActiveKw() {
+  var kws = [];
+  document.querySelectorAll('.chip:not(.removed)').forEach(function(c) { kws.push(c.textContent); });
+  return kws;
+}
+
+function rewriteBullet() {
+  if (!needKey()) return;
+  var text = document.getElementById('rwIn').value.trim();
+  if (!text) { flash('Paste a bullet point to rewrite.', 'aw'); return; }
+  var btn = document.getElementById('rwBtn');
+  btn.disabled = true; btn.textContent = 'Rewriting...';
+  callAI(
+    'Rewrite this resume bullet for a ' + document.getElementById('targetTitle').value + ' role in ' + document.getElementById('targetIndustry').value + '.\nOriginal: "' + text + '"\nRules: strong action verb, outcome-focused, under 20 words, no fabricated metrics.\nReturn ONLY the rewritten bullet.',
+    '', 300
+  ).then(function(r) {
+    var o = document.getElementById('rwOut');
+    o.style.display = 'block'; o.textContent = r.trim();
+  }).catch(function(e) { flash('Rewrite failed: ' + e.message, 'ae'); })
+  .finally(function() { btn.disabled = false; btn.textContent = 'Rewrite →'; });
+}
+
+function generateResume() {
+  if (!needKey()) return;
+  if (!PROFILE) { flash('Profile missing.', 'ae'); showSetupModal(); return; }
+  var btn = document.getElementById('generateBtn');
+  btn.disabled = true; btn.textContent = 'Generating...';
+  var kw = getActiveKw();
+  var tt = document.getElementById('targetTitle').value.trim();
+  var ti = document.getElementById('targetIndustry').value;
+  var tl = document.getElementById('targetLevel').value;
+  var cl = [PROFILE.location, PROFILE.email, PROFILE.linkedin, PROFILE.github].filter(Boolean).join(' | ');
+  var headline = analysisData && analysisData.headline ? analysisData.headline : tt;
+  var positioning = analysisData && analysisData.positioning_summary ? analysisData.positioning_summary : '';
+  var hasCerts = PROFILE.certs && PROFILE.certs !== 'None';
+  var prompt = 'Generate a complete polished resume. Return ONLY raw HTML - no markdown, no code fences, no backticks. Start directly with the h1 tag.\n\n' +
+    'CANDIDATE: ' + PROFILE.name + '\nCONTACT: ' + cl + '\nTARGET: ' + tt + ' | ' + ti + ' | ' + tl + '\nTONE: ' + selectedTone + '\n' +
+    'HEADLINE: ' + headline + '\nPOSITIONING: ' + positioning + '\n' +
+    'KEYWORDS TO INCORPORATE NATURALLY: ' + kw.join(', ') + '\n' +
+    'TOOLS AND METHODS: ' + PROFILE.tools + ' | ' + PROFILE.methods + '\n' +
+    'COMPLIANCE: ' + PROFILE.compliance + '\n' +
+    'CERTIFICATIONS: ' + PROFILE.certs + ' - do not add any certifications not listed here\n' +
+    'EDUCATION: ' + PROFILE.education + ' - use this exactly, do not change it\n' +
+    'EXPERIENCE:\n' + PROFILE.experience + '\n\n' +
+    'STRICT RULES:\n' +
+    '1. Maximum 1-2 pages\n' +
+    '2. Two paragraph summary, max 3 sentences each\n' +
+    '3. EXACTLY 4 competency categories in this format: <p class="comp"><strong>Label:</strong> Item1 Item2 Item3</p>\n' +
+    '4. EXACTLY 4 bullets per job role, max 20 words each, start with action verb\n' +
+    '5. Education section must use EXACTLY this text: ' + PROFILE.education + '\n' +
+    '6. ' + (hasCerts ? 'Use only the certifications listed above; do not invent or expand credentials\n' : 'Do NOT add any certifications - the candidate has none\n') +
+    '7. Do NOT fabricate any credentials, degrees, dates, or achievements\n' +
+    '8. Start response with h1 tag directly - no preamble, no code fences\n\n' +
+    'HTML STRUCTURE: h1 for name, p class subtitle for title, p class contact for contact info, ' +
+    'h2 for section headers, p class comp for competencies, h3 for job titles, ' +
+    'p class co-meta for company and dates, ul li for bullets, hr between major sections. No inline styles.';
+  callAI(prompt, 'Expert resume writer. Return ONLY raw HTML starting with h1. No markdown. No code fences. No backticks.', 4000)
+    .then(function(html) {
+      var clean = sanitizeResumeHtml(html.replace(/^```html\s*/i,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim());
+      generatedHtml = clean;
+      stopTimer();
+      var buildSecs = timerSeconds;
+      var savedSecs = Math.max(0, (MANUAL_MINUTES * 60) - buildSecs);
+      mmSaveResume({targetTitle:tt,targetIndustry:ti,targetLevel:tl,tone:selectedTone,headline:headline,html:clean,keywords:kw,buildSeconds:buildSecs});
+      mmSaveTiming({targetTitle:tt,targetIndustry:ti,buildSeconds:buildSecs,savedSeconds:savedSecs});
+      goStep(4);
+      var preview = document.getElementById('resumePreview');
+      var tmp = document.createElement('div');
+      tmp.innerHTML = clean;
+      preview.innerHTML = '';
+      Array.from(tmp.children).forEach(function(c) { var cl = c.cloneNode(true); cl.style.cssText=''; preview.appendChild(cl); });
+      document.getElementById('posSummary').innerHTML = '<p style="font-size:13px;color:var(--text-m);line-height:1.75">' + esc(positioning) + '</p>';
+      var used = kw.slice(0, 20);
+      document.getElementById('kwCoverage').innerHTML = '<p style="font-size:12px;color:var(--text-m);margin-bottom:8px">' + used.length + ' keywords incorporated:</p><div class="chips">' + used.map(function(k) { return '<span class="chip c-grn">' + esc(k) + '</span>'; }).join('') + '</div>';
+      renderSaved();
+      renderTimeSaved();
+      flash('Resume generated and saved!', 'as', 'ga4');
+    })
+    .catch(function(err) { stopTimer(); flash('Generation failed: ' + err.message, 'ae'); goStep(3); })
+    .finally(function() { btn.disabled = false; btn.textContent = 'Generate Resume →'; });
+}
+
+function renderSaved() {
+  var rs = mmGetResumes();
+  var w = document.getElementById('savedList');
+  if (!w) return;
+  if (!rs.length) { w.innerHTML = '<p style="color:var(--text-d)">No saved resumes yet.</p>'; return; }
+  w.innerHTML = rs.slice(0, 5).map(function(r, i) {
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">' +
+      '<div><div style="font-size:12px;font-weight:500;color:var(--text)">' + esc(r.targetTitle) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-d)">' + esc(r.targetIndustry) + ' · ' + esc(r.tone) + ' · ' + esc(new Date(r.savedAt).toLocaleDateString()) + '</div></div>' +
+      '<button class="btn btn-o btn-s" onclick="reDownload(' + i + ')">Get</button></div>';
+  }).join('');
+}
+
+function reDownload(i) {
+  var rs = mmGetResumes();
+  if (!rs[i]) return;
+  dlDoc(rs[i].html, PROFILE.name.replace(/\s+/g,'_') + '_' + rs[i].targetTitle.replace(/[^\w]/g,'_') + '.doc');
+}
+
+function renderTimeSaved() {
+  var wrap = document.getElementById('timeSavedPanel');
+  if (!wrap) return;
+  var timings = mmGetTimings();
+  var totalBuilt = 0, totalSaved = 0;
+  timings.forEach(function(t) { totalBuilt += (t.buildSeconds||0); totalSaved += (t.savedSeconds||0); });
+  var count = timings.length;
+  var avgBuild = count > 0 ? Math.round(totalBuilt / count) : 0;
+  var totalSavedHrs = (totalSaved / 3600).toFixed(1);
+  var blurb = '<div style="background:var(--amber-d2);border:1px solid rgba(245,158,11,.15);border-radius:var(--r);padding:14px;margin-bottom:12px;font-size:12px;color:var(--text-m);line-height:1.75">' +
+    '<strong style="font-size:13px;color:var(--amber)">Did you know?</strong><br>' +
+    'A well-tailored resume takes <strong style="color:var(--text)">30-60 minutes</strong> manually - reviewing the job description, rewriting bullets, adjusting your summary, and tailoring your skills section. ' +
+    'That is the industry benchmark for a senior-level application. <strong style="color:var(--amber)">Here is what Make Me! saved you:</strong></div>';
+  if (count === 0) {
+    wrap.innerHTML = blurb + '<p style="font-size:12px;color:var(--text-d);text-align:center;padding:12px">Generate your first resume to start tracking time saved.</p>';
+    return;
+  }
+  var stats = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">' +
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--amber)">' + count + '</div><div style="font-size:11px;color:var(--text-d)">Resumes Built</div></div>' +
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--green)">' + totalSavedHrs + 'h</div><div style="font-size:11px;color:var(--text-d)">Total Time Saved</div></div>' +
+    '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--blue)">' + fmtTime(avgBuild) + '</div><div style="font-size:11px;color:var(--text-d)">Avg Build Time</div></div></div>';
+  var history = timings.slice(0, 10).map(function(t) {
+    var saved = Math.max(0, t.savedSeconds||0);
+    var savedMin = Math.round(saved / 60);
+    var pct = Math.min(100, Math.round((saved / (MANUAL_MINUTES * 60)) * 100));
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">' +
+      '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(t.targetTitle) + '</div>' +
+      '<div style="font-size:11px;color:var(--text-d)">' + esc(t.targetIndustry||'') + ' - ' + esc(new Date(t.date).toLocaleDateString()) + '</div>' +
+      '<div style="margin-top:4px;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--green);border-radius:2px"></div></div></div>' +
+      '<div style="text-align:right;flex-shrink:0"><div style="font-size:11px;color:var(--text-m)">Built in</div><div style="font-size:13px;font-weight:600;color:var(--amber)">' + fmtTime(t.buildSeconds||0) + '</div>' +
+      '<div style="font-size:11px;color:var(--green)">Saved ~' + savedMin + 'm</div></div></div>';
+  }).join('');
+  wrap.innerHTML = blurb + stats + '<div style="font-size:10px;font-weight:600;color:var(--text-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px">Build History</div><div style="max-height:220px;overflow-y:auto">' + history + '</div>';
+}
+
+function downloadResume() {
+  if (!generatedHtml) { flash('Generate a resume first.', 'aw', 'ga4'); return; }
+  var role = document.getElementById('targetTitle').value.trim().replace(/[^\w]/g, '_');
+  dlDoc(generatedHtml, PROFILE.name.replace(/\s+/g,'_') + '_' + role + '.doc');
+}
+
+function dlDoc(html, fname) {
+  var styles = '@page{margin:.9in .85in}body{font-family:Calibri,Segoe UI,Arial,sans-serif;font-size:10.5pt;line-height:1.45;color:#111}h1{font-size:20pt;font-weight:700;color:#0b1628;margin-bottom:2pt}.subtitle{font-size:11pt;color:#2d4a7a;font-weight:500;margin-bottom:3pt}.contact{font-size:9.5pt;color:#555;margin-bottom:16pt}h2{font-size:10.5pt;font-weight:700;color:#0b1628;text-transform:uppercase;letter-spacing:.08em;border-bottom:1.5pt solid #c8940e;padding-bottom:2pt;margin-top:14pt;margin-bottom:6pt}h3{font-size:10.5pt;font-weight:700;color:#111;margin-top:8pt;margin-bottom:1pt}.co-meta{font-size:9.5pt;color:#555;margin-bottom:4pt;font-style:italic}.comp{font-size:10pt;margin-bottom:3pt;line-height:1.5}ul{margin-left:13pt;margin-top:2pt}li{margin-bottom:2.5pt;font-size:10pt}hr{border:none;border-top:.5pt solid #ddd;margin:8pt 0}';
+  var doc = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>' + styles + '</style></head><body>' + sanitizeResumeHtml(html) + '</body></html>';
+  var blob = new Blob([doc], {type:'application/msword'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+</script>
+</body>
+</html>
