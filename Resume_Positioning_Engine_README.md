@@ -202,7 +202,13 @@ It demonstrates how to build a workflow around a real, underserved problem: most
 
 ## License
 
-MIT — use it, fork it, adapt it.
+**PolyForm Noncommercial 1.0.0** — free for noncommercial use.
+
+You can use, modify, and share this software for personal, educational, research, or charitable purposes. Commercial use requires a separate license.
+
+See [LICENSE](LICENSE) for the full terms, or visit [polyformproject.org/licenses/noncommercial/1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/) for the official text.
+
+For commercial licensing inquiries, contact [MaddenJonP@gmail.com](mailto:MaddenJonP@gmail.com).
 
 ---
 
